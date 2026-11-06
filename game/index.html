@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>КАЗАРМА 088 // найди записки</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#050608;
+    font:16px/1.5 "Segoe UI",system-ui,sans-serif}
+  #c{display:block;width:100%;height:100%}
+
+  .hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+  .crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:14px;height:14px;opacity:.6}
+  .crosshair::before,.crosshair::after{content:"";position:absolute;background:#e8e2d0}
+  .crosshair::before{left:6px;top:0;width:2px;height:14px}
+  .crosshair::after{left:0;top:6px;width:14px;height:2px}
+
+  .counter{position:absolute;top:22px;left:26px;color:#e8e2d0;
+    font-family:Consolas,monospace;font-size:14px;letter-spacing:2px;
+    background:rgba(10,12,16,.55);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:10px 16px}
+  .counter b{color:#e8b64c}
+
+  .flash-hint{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
+    color:#8b94a8;font-family:Consolas,monospace;font-size:12px;letter-spacing:1px;
+    background:rgba(10,12,16,.55);border:1px solid rgba(255,255,255,.1);
+    border-radius:8px;padding:8px 18px}
+
+  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+    color:#e8e2d0;background:rgba(10,12,16,.8);border:1px solid rgba(232,182,76,.4);
+    border-radius:10px;padding:12px 22px;font-size:14px;opacity:0;
+    transition:all .3s;z-index:20;pointer-events:none;font-family:Consolas,monospace}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .note-modal{position:fixed;inset:0;z-index:30;display:none;place-items:center;
+    background:rgba(2,3,5,.75);backdrop-filter:blur(4px)}
+  .note-modal.open{display:grid}
+  .paper{width:min(480px,92vw);background:linear-gradient(175deg,#f4ecd8,#e9dcbe);
+    color:#2b2418;border-radius:4px;padding:38px 34px;position:relative;
+    box-shadow:0 24px 80px rgba(0,0,0,.7);transform:rotate(-.6deg);
+    animation:paperin .35s}
+  @keyframes paperin{from{transform:rotate(-.6deg) translateY(24px);opacity:0}
+    to{transform:rotate(-.6deg) translateY(0);opacity:1}}
+  .paper::before{content:"";position:absolute;inset:10px;border:1px solid rgba(43,36,24,.2)}
+  .paper .nk{font-family:Consolas,monospace;font-size:11px;color:#8a7a50;
+    letter-spacing:2px;margin-bottom:14px}
+  .paper .body{font-family:Georgia,serif;font-size:16px;line-height:1.75;white-space:pre-wrap}
+  .paper .close-btn{margin-top:22px;text-align:center;font-family:Consolas,monospace;
+    font-size:12px;color:#8a7a50;letter-spacing:1px;cursor:pointer;
+    border:1px solid rgba(43,36,24,.3);border-radius:4px;padding:8px;user-select:none}
+  .paper .close-btn:hover{background:rgba(43,36,24,.08)}
+
+  .start{position:fixed;inset:0;z-index:40;display:grid;place-items:center;
+    background:radial-gradient(900px 600px at 50% 40%,#0d1017,#050608)}
+  .start-card{max-width:520px;padding:44px 40px;margin:20px;
+    background:rgba(15,18,26,.7);backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.1);border-radius:20px;
+    box-shadow:0 24px 80px rgba(0,0,0,.6)}
+  .start-card .k{font-family:Consolas,monospace;font-size:11px;color:#e8b64c;
+    letter-spacing:3px;margin-bottom:12px}
+  .start-card h1{font-size:clamp(26px,5vw,38px);margin-bottom:14px;color:#e8e2d0;line-height:1.15}
+  .start-card p{color:#8b94a8;font-size:15px;margin-bottom:14px}
+  .start-card .keys{font-family:Consolas,monospace;font-size:13px;color:#aab3c5;
+    background:rgba(5,6,8,.5);border:1px solid rgba(255,255,255,.08);border-radius:10px;
+    padding:14px 18px;margin:18px 0;line-height:1.9}
+  .start-card .keys b{color:#e8b64c}
+  .start-card button{width:100%;padding:16px;font-size:16px;font-weight:700;
+    background:#e8b64c;color:#0a0c10;border:none;border-radius:12px;cursor:pointer;
+    transition:filter .2s}
+  .start-card button:hover{filter:brightness(1.1)}
+  .goal{color:#e8b64c}
+
+  .finale{position:fixed;inset:0;z-index:50;display:none;place-items:center;
+    background:rgba(2,3,5,.9);backdrop-filter:blur(6px)}
+  .finale.open{display:grid}
+  .finale-card{max-width:560px;padding:48px 44px;margin:20px;text-align:center;
+    background:rgba(15,18,26,.8);border:1px solid rgba(232,182,76,.35);border-radius:22px}
+  .finale-card .k{font-family:Consolas,monospace;font-size:11px;color:#e8b64c;
+    letter-spacing:3px;margin-bottom:14px}
+  .finale-card h2{color:#e8e2d0;font-size:clamp(24px,4vw,34px);margin-bottom:16px}
+  .finale-card p{color:#8b94a8;font-size:15px;margin-bottom:10px}
+  .finale-card .site{display:inline-block;margin:20px 0;padding:16px 30px;
+    background:#e8b64c;color:#0a0c10;border-radius:12px;font-weight:700;font-size:17px;
+    text-decoration:none;transition:filter .2s}
+  .finale-card .site:hover{filter:brightness(1.12)}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div class="hud">
+  <div class="crosshair"></div>
+  <div class="counter">ЗАПИСКИ: <b id="cnt">0</b> / 7</div>
+  <div class="flash-hint" id="fhint">WASD — идти · МЫШЬ — смотреть · F — фонарь · E — взять</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="note-modal" id="noteModal">
+  <div class="paper">
+    <div class="nk" id="noteKicker">ЗАПИСКА 1/7</div>
+    <div class="body" id="noteBody">…</div>
+    <div class="close-btn" id="noteClose">ЗАКРЫТЬ · вернуться в казарму</div>
+  </div>
+</div>
+
+<div class="finale" id="finale">
+  <div class="finale-card">
+    <div class="k">// все записки собраны</div>
+    <h2>Он оставил тебе адрес</h2>
+    <p>В последней записке — координаты. Дальше — сам.</p>
+    <a class="site" id="siteLink" href="https://qalko12.github.io/podarok/">→ ОТКРЫТЬ АРХИВ №088</a>
+    <p style="font-size:12px;color:#5c6579;margin-top:14px;font-family:Consolas,monospace">
+      qalko12.github.io/podarok</p>
+  </div>
+</div>
+
+<div class="start" id="start">
+  <div class="start-card">
+    <div class="k">// в/ч 088 · казарма · ночь перед убытием</div>
+    <h1>Он уехал. Осталось 7 записок.</h1>
+    <p>Призывник оставил вам что-то важное — и разорвал на записки.
+      Спрятал по всей казарме. Найдите все <span class="goal">7</span> —
+      и получите адрес, где он всё оставил.</p>
+    <div class="keys">
+      <b>WASD</b> — ходить &nbsp;·&nbsp; <b>МЫШЬ</b> — смотреть<br>
+      <b>F</b> — фонарь &nbsp;·&nbsp; <b>E</b> — взять записку<br>
+      Записки не светятся. Смотрите внимательно.
+    </div>
+    <p style="font-size:13px;color:#5c6579">Совет: записки — маленькие жёлтые клочки.
+      Ищите на кроватях, в тумбочках, под вещами, в тёмных углах.</p>
+    <button id="startBtn">ЗАЙТИ В КАЗАРМУ</button>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from "three";
+
+/* ============ Записки (тексты — можно менять) ============ */
+const NOTES = [
+  { pos: [2.2, 0.58, -3.4], text:
+    "1/7. Привет. Раз уж ты это читаешь — ты в моей казарме.\nТут я год спал, читал и ждал. Осталось шесть записок.\nИщи под подушками. Я всегда прятал там самое важное." },
+  { pos: [-3.5, 0.97, -8.2], text:
+    "2/7. Стол дневального. Я тут дежурил 100 раз.\nПоловина ночей — за этим вот столом.\nЗаписка следующая — там, где сушат вещи. Ищи высоко." },
+  { pos: [5.8, 1.62, -11.9], text:
+    "3/7. Верхняя полка сушилки. Сюда не залезешь без стула.\nЯ залезал. Командир ругался. Было дело.\nДальше — тёмный угол за шкафом. Фонарь в руках?" },
+  { pos: [-7.35, 0.5, -5.5], text:
+    "4/7. За шкафом с шинелями. Место, куда никто не суётся.\nЗдесь я прятал телефон. Не найди — командир точно бы.\nСледующая — на улице, у выхода. Да, придётся выйти в ночь." },
+  { pos: [-8.9, 0.14, -17.5], text:
+    "5/7. Под окном в конце казармы, на полу. За окном — плац. Я тут делал зарядку в 6 утра.\nПолгода — с ненавистью, полгода — с привычкой.\nОсталось две. Обе внутри. Одна — там, где едят." },
+  { pos: [3.9, 0.82, -13.6], text:
+    "6/7. Стол в столовой, рядом с солонкой. Хлеб тут был — так себе.\nЗато в конце года повар сделал торт. Мы его сожрали за минуту.\nПоследняя записка — над дверью. Не пропусти." },
+  { pos: [0.0, 2.6, -20.6], text:
+    "7/7. Над дверью. Отсюда я ушёл на дембель.\nВсё, что не поместилось в рюкзак — по ссылке ниже.\nЗабирай. Год ждал тебя. Не подведи.\n\n→ qalko12.github.io/podarok" }
+];
+const FINAL_LINK = "https://qalko12.github.io/podarok/";
+
+/* ============ Рендер ============ */
+const canvas = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x04050a);
+scene.fog = new THREE.Fog(0x04050a, 8, 34);
+
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 100);
+
+/* ============ Свет ============ */
+scene.add(new THREE.AmbientLight(0x2a3850, 1.1));
+const moon = new THREE.DirectionalLight(0x8fa8d8, 0.5);
+moon.position.set(-6, 12, -20);
+scene.add(moon);
+[[-9.5, 2.4, -6], [9.5, 2.4, -6], [-9.5, 2.4, -14], [9.5, 2.4, -14]].forEach(p => {
+  const l = new THREE.PointLight(0x7c9cff, 1.6, 14, 1.5);
+  l.position.set(...p);
+  scene.add(l);
+});
+const deskLamp = new THREE.PointLight(0xe8b64c, 1.6, 9, 1.7);
+deskLamp.position.set(-3.5, 2.6, -8);
+scene.add(deskLamp);
+
+
+[[0, -6], [0, -12], [0, -17]].forEach(p => {
+  const lamp = new THREE.PointLight(0xffe4b0, 1.2, 10, 1.8);
+  lamp.position.set(p[0], 3.1, p[1]);
+  scene.add(lamp);
+});
+const flash = new THREE.SpotLight(0xfff2d0, 0, 18, 0.42, 0.45, 1.4);
+flash.visible = false;
+scene.add(flash);
+scene.add(flash.target);
+
+/* ============ Материалы ============ */
+const M = {
+  floor: new THREE.MeshStandardMaterial({ color: 0x3a3f38, roughness: 0.92 }),
+  wall: new THREE.MeshStandardMaterial({ color: 0x4a5158, roughness: 0.95 }),
+  wallDark: new THREE.MeshStandardMaterial({ color: 0x33383f, roughness: 0.95 }),
+  wood: new THREE.MeshStandardMaterial({ color: 0x6b5133, roughness: 0.8 }),
+  woodDark: new THREE.MeshStandardMaterial({ color: 0x4a3722, roughness: 0.85 }),
+  metal: new THREE.MeshStandardMaterial({ color: 0x6a6f78, roughness: 0.4, metalness: 0.7 }),
+  cloth: new THREE.MeshStandardMaterial({ color: 0x3d4a52, roughness: 1 }),
+  blanket: new THREE.MeshStandardMaterial({ color: 0x2f3b45, roughness: 1 }),
+  ceiling: new THREE.MeshStandardMaterial({ color: 0x2a2e33, roughness: 1 }),
+  window: new THREE.MeshBasicMaterial({ color: 0x9eb8f0 })
+};
+
+/* ============ Казарма 20×3.4×22 ============ */
+const ROOM = { w: 20, h: 3.4, d: 22 };
+const zOff = -ROOM.d / 2 + 1;
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.w, ROOM.d), M.floor);
+floor.rotation.x = -Math.PI / 2;
+floor.position.z = zOff;
+scene.add(floor);
+
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.w, ROOM.d), M.ceiling);
+ceil.rotation.x = Math.PI / 2;
+ceil.position.set(0, ROOM.h, zOff);
+scene.add(ceil);
+
+function wall(w, h, x, y, z, ry, mat) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat || M.wall);
+  m.position.set(x, y, z);
+  m.rotation.y = ry;
+  scene.add(m);
+}
+wall(ROOM.w, ROOM.h, 0, ROOM.h / 2, -ROOM.d + 1, 0);
+wall(ROOM.w, ROOM.h, 0, ROOM.h / 2, 1, Math.PI);
+wall(ROOM.d, ROOM.h, -ROOM.w / 2, ROOM.h / 2, zOff, Math.PI / 2, M.wallDark);
+wall(ROOM.d, ROOM.h, ROOM.w / 2, ROOM.h / 2, zOff, -Math.PI / 2, M.wallDark);
+
+/* окна */
+[[-6, 2.2], [6, 2.2]].forEach(([x, y]) => {
+  const win = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.4), M.window);
+  win.position.set(x, y, -ROOM.d + 1.02);
+  scene.add(win);
+});
+
+/* ============ Мебель ============ */
+function bunk(x, z) {
+  const g = new THREE.Group();
+  for (let tier = 0; tier < 2; tier++) {
+    const y = 0.45 + tier * 1.0;
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.09, 0.95), M.wood);
+    frame.position.set(0, y, 0);
+    g.add(frame);
+    const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.13, 0.7), M.cloth);
+    pillow.position.set(-0.65, y + 0.1, 0.05);
+    g.add(pillow);
+    const blanket = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.07, 0.85), M.blanket);
+    blanket.position.set(0.3, y + 0.07, 0);
+    g.add(blanket);
+  }
+  for (const [lx, lz] of [[-0.95, -0.42], [0.95, -0.42], [-0.95, 0.42], [0.95, 0.42]]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 0.08), M.metal);
+    leg.position.set(lx, 0.75, lz);
+    g.add(leg);
+  }
+  g.position.set(x, 0, z);
+  scene.add(g);
+}
+for (let i = 0; i < 3; i++) {
+  bunk(-6.5, -4 - i * 2.6);
+  bunk(6.5, -4 - i * 2.6);
+}
+
+function lockBox(x, z) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.6), M.woodDark);
+  body.position.y = 0.5;
+  g.add(body);
+  for (let d = 0; d < 2; d++) {
+    const dr = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.44, 0.03), M.wood);
+    dr.position.set(0, 0.28 + d * 0.48, 0.31);
+    g.add(dr);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.035), M.metal);
+    knob.position.set(0.28, 0.28 + d * 0.48, 0.34);
+    g.add(knob);
+  }
+  g.position.set(x, 0, z);
+  scene.add(g);
+}
+for (let i = 0; i < 3; i++) {
+  lockBox(-3.8, -4 - i * 2.6);
+  lockBox(3.8, -4 - i * 2.6);
+}
+
+/* стол дневального */
+{
+  const g = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.8), M.wood);
+  top.position.y = 0.9;
+  g.add(top);
+  for (const [lx, lz] of [[-0.7, -0.32], [0.7, -0.32], [-0.7, 0.32], [0.7, 0.32]]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.9, 0.07), M.metal);
+    leg.position.set(lx, 0.45, lz);
+    g.add(leg);
+  }
+  g.position.set(-3.5, 0, -8.2);
+  scene.add(g);
+}
+
+/* сушилка */
+{
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.6, 0.7), M.metal);
+  body.position.set(0, 1.3, 0);
+  g.add(body);
+  for (let s = 0; s < 3; s++) {
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 0.6), M.wood);
+    shelf.position.set(0, 0.9 + s * 0.65, 0.05);
+    g.add(shelf);
+  }
+  g.position.set(5.8, 0, -12.2);
+  scene.add(g);
+}
+
+/* шкаф в тёмном углу */
+{
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.4, 0.8), M.woodDark);
+  body.position.y = 1.2;
+  g.add(body);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.76, 2.3, 0.05), M.wood);
+  door.position.set(0, 1.2, 0.42);
+  g.add(door);
+  g.position.set(-7.2, 0, -5.2);
+  g.rotation.y = 0.5;
+  scene.add(g);
+}
+
+/* столы столовой */
+for (let i = 0; i < 2; i++) {
+  const g = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.08, 1.1), M.wood);
+  top.position.y = 0.75;
+  g.add(top);
+  for (const [lx, lz] of [[-1.4, -0.4], [1.4, -0.4], [-1.4, 0.4], [1.4, 0.4]]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.75, 0.08), M.metal);
+    leg.position.set(lx, 0.375, lz);
+    g.add(leg);
+  }
+  const salt = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.12), M.metal);
+  salt.position.set(0.9, 0.85, 0.2);
+  g.add(salt);
+  g.position.set(3.9, 0, -13.6 - i * 2);
+  scene.add(g);
+}
+
+/* дверь выхода */
+{
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.5, 0.1), M.metal);
+  door.position.set(0, 1.25, -ROOM.d + 1.15);
+  scene.add(door);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.25),
+    new THREE.MeshStandardMaterial({ color: 0x3a4a5a, roughness: 0.7 }));
+  sign.position.set(0, 2.85, -ROOM.d + 1.2);
+  scene.add(sign);
+}
+
+/* ============ Записки ============ */
+const noteMeshes = [];
+const noteGeo = new THREE.PlaneGeometry(0.22, 0.16);
+NOTES.forEach((n, i) => {
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xf0e0b0, roughness: 0.9, side: THREE.DoubleSide });
+  const m = new THREE.Mesh(noteGeo, mat);
+  m.position.set(...n.pos);
+  m.rotation.set(-Math.PI / 2 + 0.06, 0, 0);
+  m.userData = { index: i, taken: false };
+  scene.add(m);
+  noteMeshes.push(m);
+});
+
+/* ============ Игрок ============ */
+const player = { pos: new THREE.Vector3(0, 1.65, 0.5), yaw: 0, pitch: 0, speed: 3.4 };
+const keys = {};
+addEventListener("keydown", e => {
+  if (e.code === "KeyF") {
+    if (document.pointerLockElement === canvas || true) {
+      flash.visible = !flash.visible;
+      toast(flash.visible ? "🔦 фонарь включён" : "фонарь выключен");
+    }
+    return;
+  }
+  keys[e.code] = true;
+  if (e.code === "KeyE") tryTakeNote();
+});
+addEventListener("keyup", e => { keys[e.code] = false; });
+
+canvas.addEventListener("click", () => {
+  if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
+});
+addEventListener("mousemove", e => {
+  if (document.pointerLockElement !== canvas) return;
+  player.yaw -= e.movementX * 0.0022;
+  player.pitch = Math.max(-1.35, Math.min(1.35, player.pitch - e.movementY * 0.0022));
+});
+
+/* ============ Взятие ============ */
+let found = 0;
+const raycaster = new THREE.Raycaster();
+const noteModal = document.getElementById("noteModal");
+const noteBody = document.getElementById("noteBody");
+const noteKicker = document.getElementById("noteKicker");
+const toastEl = document.getElementById("toast");
+let toastT = null;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastT);
+  toastT = setTimeout(() => toastEl.classList.remove("show"), 2600);
+}
+function tryTakeNote() {
+  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const live = noteMeshes.filter(m => !m.userData.taken);
+  const hits = raycaster.intersectObjects(live);
+  let target = null;
+  if (hits.length && hits[0].distance < 3.0) {
+    target = hits[0].object;
+  } else {
+    // мягкая доводка: ближайшая записка в 2.6м и в конусе ~30°
+    const fwd = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation);
+    let best = null, bestScore = Infinity;
+    live.forEach(m => {
+      const to = m.position.clone().sub(camera.position);
+      const d = to.length();
+      if (d > 2.8) return;
+      to.normalize();
+      const dot = to.dot(fwd);
+      if (d < 2.2) { best = m; bestScore = 0; return; } // рядом — берём без прицела
+      if (dot < 0.86) return;
+      const score = d * (2 - dot);
+      if (score < bestScore) { bestScore = score; best = m; }
+    });
+    target = best;
+  }
+  {
+    const m = target;
+    if (!m) return;
+    m.userData.taken = true;
+    m.visible = false;
+    found++;
+    document.getElementById("cnt").textContent = found;
+    noteKicker.textContent = "ЗАПИСКА " + found + " / " + NOTES.length;
+    noteBody.textContent = NOTES[m.userData.index].text;
+    noteModal.classList.add("open");
+    document.exitPointerLock();
+    if (found === NOTES.length) setTimeout(showFinale, 400);
+  }
+}
+document.getElementById("noteClose").addEventListener("click", () => {
+  noteModal.classList.remove("open");
+  canvas.requestPointerLock();
+});
+function showFinale() {
+  document.getElementById("siteLink").href = FINAL_LINK;
+  document.getElementById("finale").classList.add("open");
+  document.exitPointerLock();
+}
+
+document.getElementById("startBtn").addEventListener("click", () => {
+  document.getElementById("start").style.display = "none";
+  canvas.requestPointerLock();
+  toast("Казарма 088. Найди 7 записок. F — фонарь.");
+});
+
+/* ============ Коллизии ============ */
+const bounds = {
+  xMin: -ROOM.w / 2 + 0.4, xMax: ROOM.w / 2 - 0.4,
+  zMin: -ROOM.d + 1.5, zMax: 0.5
+};
+
+/* ============ Цикл ============ */
+const clock = new THREE.Clock();
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let walkPhase = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  const fwd = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+  const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
+  const move = new THREE.Vector3();
+  if (keys.KeyW || keys.ArrowUp) move.add(fwd);
+  if (keys.KeyS || keys.ArrowDown) move.sub(fwd);
+  if (keys.KeyD || keys.ArrowRight) move.add(right);
+  if (keys.KeyA || keys.ArrowLeft) move.sub(right);
+  const walking = move.lengthSq() > 0;
+  if (walking) {
+    move.normalize().multiplyScalar(player.speed * dt);
+    player.pos.add(move);
+    player.pos.x = Math.max(bounds.xMin, Math.min(bounds.xMax, player.pos.x));
+    player.pos.z = Math.max(bounds.zMin, Math.min(bounds.zMax, player.pos.z));
+    walkPhase += dt * 8;
+  }
+
+  camera.position.copy(player.pos);
+  if (walking) camera.position.y = player.pos.y + Math.sin(walkPhase) * 0.035;
+  camera.rotation.set(0, 0, 0);
+  camera.rotateY(player.yaw);
+  camera.rotateX(player.pitch);
+
+  flash.position.copy(player.pos);
+  const look = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation);
+  flash.target.position.copy(player.pos).add(look.multiplyScalar(6));
+
+  deskLamp.intensity = 2.2 + Math.sin(performance.now() * 0.013) * 0.2 + (Math.random() - 0.5) * 0.08;
+
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
