@@ -45,15 +45,15 @@
   .note-modal{position:fixed;inset:0;z-index:30;display:none;place-items:center;
     background:rgba(2,3,5,.78);backdrop-filter:blur(5px)}
   .note-modal.open{display:grid}
-  .paper{width:min(500px,92vw);background:linear-gradient(175deg,#f4ecd8,#e6d7b4);
+  .paper{width:min(560px,94vw);background:linear-gradient(175deg,#f4ecd8,#e6d7b4);
     color:#2b2418;border-radius:3px;padding:40px 36px;position:relative;
     box-shadow:0 24px 80px rgba(0,0,0,.75);animation:paperin .35s}
   @keyframes paperin{from{transform:translateY(26px);opacity:0}to{transform:none;opacity:1}}
   .paper::before{content:"";position:absolute;inset:11px;border:1px solid rgba(43,36,24,.2);
     pointer-events:none}
-  .paper .nk{font-family:Consolas,monospace;font-size:11px;color:#8a7a50;
+  .paper .nk{font-family:Consolas,monospace;font-size:13px;color:#8a7a50;
     letter-spacing:2px;margin-bottom:16px}
-  .paper .body{font-family:Georgia,serif;font-size:16px;line-height:1.8;white-space:pre-wrap}
+  .paper .body{font-family:Georgia,serif;font-size:18px;line-height:1.9;white-space:pre-wrap;color:#1f1a0e}
   .paper .close-btn{margin-top:24px;display:block;width:100%;text-align:center;
     font-family:Consolas,monospace;font-size:12px;color:#6a5a30;letter-spacing:1px;
     cursor:pointer;border:1px solid rgba(43,36,24,.35);border-radius:4px;padding:10px;
@@ -186,9 +186,9 @@ const NOTES = [
     "ГРАФИТ 4/7\n\nКанцелярия. Стол командира. Тут я подписывал увольнительные —\nи один раз поддел сержанту отметку.\nНе сдамся: он подделывал мою. Так и жили.\n\nДальше — сейф у стены. Код — номер части: 088." },
   { act: 2, pos: [14.4, 0.9, -12.6], text:
     "ГРАФИТ 5/7\n\nВнутри сейфа. Код подошёл — молодец. Эта записка — про то,\nчто я не писал домой: что я боялся. Первые три месяца.\nПотом боялся, что перестану бояться — и остыну.\nНе остыл.\n\nАКТ III. Каптёрка — дальше за канцелярией. Там темно даже для ночи." },
-  { act: 3, pos: [19.6, 0.42, -9.2], text:
+  { act: 3, pos: [18.9, 0.42, -9.2], text:
     "ГРАФИТ 6/7\n\nКаптёрка. Ящики, ящики, ящики. В одном из них — эта записка.\nТут я в первый месяц рыдал в подушку, а во второй — прятал\nтелефон от шмона. Оба факта никому.\n\nПоследняя — у двери. Она для тебя." },
-  { act: 3, pos: [20.2, 1.35, -15.9], text:
+  { act: 3, pos: [19.0, 1.35, -15.5], text:
     "ГРАФИТ 7/7\n\nУ двери каптёрки. Отсюда я вышел на дембель.\nВсё, что не влезло в рюкзак, — по ссылке.\nГод был длинный. Вы — короткие. Не растеряйте.\n\n→ qalko12.github.io/podarok" }
 ];
 const FINAL_LINK = "https://qalko12.github.io/podarok/";
@@ -260,7 +260,7 @@ const M = {
   cloth:   new THREE.MeshStandardMaterial({ color: 0x3d4a52, roughness: 1 }),
   blanket: new THREE.MeshStandardMaterial({ color: 0x2c3841, roughness: 1 }),
   olive:   new THREE.MeshStandardMaterial({ color: 0x444d36, roughness: 0.95 }),
-  paper:   new THREE.MeshStandardMaterial({ color: 0xf0e0b0, roughness: 0.9, side: THREE.DoubleSide }),
+  paper:   new THREE.MeshStandardMaterial({ color: 0xf5e6b8, roughness: 0.85, side: THREE.DoubleSide, emissive: 0xd8c078, emissiveIntensity: 0.22 }),
   window:  new THREE.MeshBasicMaterial({ color: 0x93aade, transparent: true, opacity: 0.85 })
 };
 
@@ -451,11 +451,11 @@ box(1.5, 0.08, 0.08, M.wood, 15.1, 2.05, -14.5, 0.5, false);
 
 /* ============ записки ============ */
 const noteMeshes = [];
-const noteGeo = new THREE.PlaneGeometry(0.24, 0.17);
+const noteGeo = new THREE.PlaneGeometry(0.4, 0.3);
 NOTES.forEach((n, i) => {
   const m = new THREE.Mesh(noteGeo, M.paper.clone());
   m.position.set(...n.pos);
-  m.rotation.set(-Math.PI / 2 + 0.08, 0, (i % 3 - 1) * 0.25, "YXZ");
+  m.rotation.set(-Math.PI / 2 + 0.55, (i % 3 - 1) * 0.3, 0, "YXZ");
   m.userData = { index: i, taken: false, act: n.act };
   scene.add(m);
   noteMeshes.push(m);
@@ -591,7 +591,7 @@ document.getElementById("startBtn").addEventListener("click", () => {
 
 /* ============ коллизии ============ */
 function collide(nx, nz) {
-  nx = Math.max(-5.5, Math.min(19.4, nx));
+  nx = Math.max(-5.5, Math.min(19.3, nx));
   nz = Math.max(-20.3, Math.min(0.6, nz));
   let px = player.pos.x, pz = player.pos.z;
   let okX = true;
