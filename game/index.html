@@ -43,13 +43,15 @@
     animation:paperin .35s}
   @keyframes paperin{from{transform:rotate(-.6deg) translateY(24px);opacity:0}
     to{transform:rotate(-.6deg) translateY(0);opacity:1}}
-  .paper::before{content:"";position:absolute;inset:10px;border:1px solid rgba(43,36,24,.2)}
+  .paper::before{content:"";position:absolute;inset:10px;border:1px solid rgba(43,36,24,.2);
+    pointer-events:none}
   .paper .nk{font-family:Consolas,monospace;font-size:11px;color:#8a7a50;
     letter-spacing:2px;margin-bottom:14px}
   .paper .body{font-family:Georgia,serif;font-size:16px;line-height:1.75;white-space:pre-wrap}
   .paper .close-btn{margin-top:22px;text-align:center;font-family:Consolas,monospace;
     font-size:12px;color:#8a7a50;letter-spacing:1px;cursor:pointer;
-    border:1px solid rgba(43,36,24,.3);border-radius:4px;padding:8px;user-select:none}
+    border:1px solid rgba(43,36,24,.3);border-radius:4px;padding:8px;user-select:none;
+    position:relative;z-index:5;pointer-events:auto;display:block;width:100%}
   .paper .close-btn:hover{background:rgba(43,36,24,.08)}
 
   .start{position:fixed;inset:0;z-index:40;display:grid;place-items:center;
@@ -196,8 +198,8 @@ scene.add(deskLamp);
   lamp.position.set(p[0], 3.1, p[1]);
   scene.add(lamp);
 });
-const flash = new THREE.SpotLight(0xfff2d0, 0, 18, 0.42, 0.45, 1.4);
-flash.visible = false;
+const flash = new THREE.SpotLight(0xfff2d0, 0, 22, 0.5, 0.4, 1.2);
+flash.intensity = 0;  /* фонарь выключен; F включит */
 scene.add(flash);
 scene.add(flash.target);
 
@@ -387,11 +389,19 @@ NOTES.forEach((n, i) => {
 const player = { pos: new THREE.Vector3(0, 1.65, 0.5), yaw: 0, pitch: 0, speed: 3.4 };
 const keys = {};
 addEventListener("keydown", e => {
-  if (e.code === "KeyF") {
-    if (document.pointerLockElement === canvas || true) {
-      flash.visible = !flash.visible;
-      toast(flash.visible ? "🔦 фонарь включён" : "фонарь выключен");
+  /* модалка записки открыта: E/Enter закрывают, прочее не мешает */
+  if (noteModal.classList.contains("open")) {
+    if (e.code === "KeyE" || e.code === "Enter" || e.code === "Escape") {
+      noteModal.classList.remove("open");
+      try { canvas.requestPointerLock(); } catch (err) {}
     }
+    return;
+  }
+  if (e.code === "KeyF") {
+    const on = flash.intensity <= 0;
+    flash.intensity = on ? 2.6 : 0;
+    flash.visible = true;
+    toast(on ? "🔦 фонарь включён" : "фонарь выключен");
     return;
   }
   keys[e.code] = true;
@@ -462,7 +472,9 @@ function tryTakeNote() {
 }
 document.getElementById("noteClose").addEventListener("click", () => {
   noteModal.classList.remove("open");
-  canvas.requestPointerLock();
+  /* pointer lock нельзя требовать мгновенно — браузер требует user gesture и
+     валидный элемент: ловим отказ тихо, клик по канвасу вернёт управление мышью */
+  try { canvas.requestPointerLock(); } catch (e) {}
 });
 function showFinale() {
   document.getElementById("siteLink").href = FINAL_LINK;
